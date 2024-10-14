@@ -38,3 +38,20 @@ public class ContactSearch {
         return matchingContacts;
     }
 }
+
+
+
+
+## The Apex class must be called ContactAndLeadSearch and be in the public scope
+The Apex class must have a public static method called searchContactsAndLeads
+The method must accept an incoming string as a parameter
+The method should then find any contact or lead whose first or last name match the string
+The method should finally use a return type of List<List< sObject>>
+NOTE: Because SOSL indexes data for searching, you must create a Contact record and Lead record before checking this challenge. Both records must have the last name Smith. The challenge uses these records for the SOSL search
+public class ContactAndLeadSearch {
+    public static List<List<sObject>> searchContactsAndLeads(String LastName) {
+        // Perform SOSL search to find contacts and leads with matching first or last name
+        List<List<sObject>> searchResults = [FIND :lastName IN ALL FIELDS RETURNING Contact(Name), Lead(Name)];
+        return searchResults;
+    }
+}
