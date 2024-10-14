@@ -1,0 +1,14 @@
+# The method must insert the account into the system and then return the record AND also must accept an empty string, catch the failed DML and then return null
+public class AccountHandler {
+    public static Account insertNewAccount(String nam){
+        
+        try{
+            Account acc = new Account(Name=nam);
+        	insert acc;
+            return acc;
+        }
+        catch (DMLException e) {
+    		return null; 
+        }
+    }
+}
