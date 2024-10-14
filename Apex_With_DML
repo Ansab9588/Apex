@@ -51,7 +51,7 @@ NOTE: Because SOSL indexes data for searching, you must create a Contact record 
 public class ContactAndLeadSearch {
     public static List<List<sObject>> searchContactsAndLeads(String LastName) {
         // Perform SOSL search to find contacts and leads with matching first or last name
-        List<List<sObject>> searchResults = [FIND :lastName IN ALL FIELDS RETURNING Contact(Name), Lead(Name)];
+        List<List<sObject>> searchResults = [FIND :LastName IN ALL FIELDS RETURNING Contact(Name), Lead(Name)];
         return searchResults;
     }
 }
