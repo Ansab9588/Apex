@@ -63,7 +63,7 @@ List <Contact> cts = new List<Contact>();
 cts.add(new Contact(FirstName = 'Hashim', LastName = 'Amla'));
 cts.add(new Contact(FirstName = 'ABD'));
 
-List<Database.saveResult> savHist = Database.insert(cts);
+List<Database.saveResult> savHist = Database.insert(cts, False);
 
 for(Database.saveResult hist : savHist){
     if(hist.isSuccess()){
