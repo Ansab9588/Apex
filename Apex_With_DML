@@ -8,7 +8,7 @@ public class AccountHandler {
             return acc;
         }
         catch (DMLException e) {
-    		return null; 
+    		return null;
         }
     }
 }
