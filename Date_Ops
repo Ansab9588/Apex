@@ -1,0 +1,14 @@
+# Setting a Date
+Date birthday = Date.newInstance(2001, 7, 20);
+
+# Incrementing Days in Date
+Date today = Date.today(); // Get the current date
+Date tomorrow = today.addDays(1); // Increment by one day
+
+# Incrementing Months in Date
+Date today = Date.today();
+Date nextMonth = today.addMonths(1); // Increment by one month
+
+# Incrementing Years in Date
+Date today = Date.today();
+Date nextYear = today.addYears(1); // Increment by one year
