@@ -55,3 +55,21 @@ public class ContactAndLeadSearch {
         return searchResults;
     }
 }
+
+
+
+# Showing Erros using SaveResult Object
+List <Contact> cts = new List<Contact>();
+cts.add(new Contact(FirstName = 'Hashim', LastName = 'Amla'));
+cts.add(new Contact(FirstName = 'ABD'));
+
+List<Database.saveResult> savHist = Database.insert(cts);
+
+for(Database.saveResult hist : savHist){
+    if(hist.isSuccess()){
+        System.debug('Contact Insert Id : '+hist.getId());
+    }
+    else{
+        System.debug('Error : '+hist.getErrors()[0].getMessage());
+    }
+}
