@@ -57,3 +57,62 @@ public class TestVerifyDate{
 
 
 
+
+
+
+--2--
+
+Create a simple Apex trigger which blocks inserts and updates to any contact with a last name of 'INVALIDNAME'. You'll copy the code for the class from the Get Ready for the Hands-on Challenge section. Then write unit tests that achieve 100% code coverage.
+
+-Apex_Trigger-
+trigger RestrictContactByName on Contact (before insert, before update) {
+  //check contacts prior to insert or update for invalid data
+  for(Contact c : Trigger.New) {
+    if(c.LastName == 'INVALIDNAME') {
+      //invalidname is invalid
+      c.AddError('The Last Name "'+c.LastName+'" is not allowed for DML');
+    }
+  }
+}
+
+
+
+-Test_Class-
+@isTest
+public class TestRestrictContactByName {
+    
+	@testSetup
+    public static void testData(){
+        List<Contact> contacts = new List<Contact>();
+        contacts.add(new Contact(LastName='INVALIDNAME'));
+        contacts.add(new Contact(LastName='VALIDNAME1'));
+        contacts.add(new Contact(LastName='INVALIDNAME2'));
+        Database.insert(contacts, False);
+    }
+    
+    @isTest
+    public static void testResCon(){
+        Contact tC = [SELECT Id, Name, LastName FROM Contact LIMIT 1];
+        
+        System.assertNotEquals('INVALIDNAME', tc.LastName);
+    }
+    
+    @isTest
+    public static void testValidName() {
+        // Query for a Contact with a valid name
+        Contact validContact = [SELECT Id, LastName FROM Contact WHERE LastName = 'VALIDNAME1' LIMIT 1];
+
+        // Assert that the valid Contact record is returned
+        System.assertNotEquals(null, validContact);
+    }
+}
+
+
+
+
+
+
+
+
+
+
