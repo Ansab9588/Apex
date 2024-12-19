@@ -111,8 +111,58 @@ public class TestRestrictContactByName {
 
 
 
+--3--
+Create an Apex class that implements the Database.Batchable interface to update all Lead records in the org with a specific LeadSource.
+
+public class LeadProcessor implements Database.Batchable<sObject> {
+    public Database.QueryLocator start(Database.BatchableContext context) {
+        return Database.getQueryLocator([SELECT Id, Name FROM Lead]);
+    }
+    
+    public void execute(Database.BatchableContext context, List<Lead> leads) {
+        for (Lead lead : leads) {
+            lead.LeadSource = 'Dreamforce';
+        }
+        
+        update leads;
+    }
+    
+    public void finish(Database.BatchableContext context) {
+        System.debug('Job done!');
+    }
+}
 
 
 
-
+-Test_Class_
+@isTest
+private class LeadProcessorTest {
+    @isTest
+    private static void testLeadProcessor() {
+        List<Lead> leads = new List<Lead>();
+        
+        for (Integer i = 0; i < 200; i++) {
+            leads.add(
+                new Lead(
+                    FirstName = 'Jack',
+                    LastName = 'Shephard',
+                    Company = 'Salesforce'
+                )
+            );
+        }
+        
+        insert leads;
+        
+        Test.startTest();
+        LeadProcessor leadProcessor = new LeadProcessor();
+        Database.executeBatch(leadProcessor, 200);
+        Test.stopTest();
+        
+        List<Lead> updatedLeads = [SELECT Id
+                                   FROM Lead
+                                   WHERE LeadSource = 'Dreamforce'];
+        
+        System.assertEquals(200, updatedLeads.size(), 'Something went wrong! At least 1 Lead have not been updated correctly!');
+    }
+}
 
