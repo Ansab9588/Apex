@@ -166,3 +166,72 @@ private class LeadProcessorTest {
     }
 }
 
+
+
+
+--4--
+Create a Queueable Apex class that inserts the same Contact for each Account for a specific state.
+
+public class AddPrimaryContact implements Queueable {
+    private Contact contact;
+    private String billingState;
+        
+    public AddPrimaryContact(Contact contact, String billingState) {
+        this.contact = contact;
+        this.billingState = billingState;
+    }
+    
+    public void execute(QueueableContext context) {
+        // Query up to 200 Accounts with the specified BillingState
+        List<Account> accounts = [SELECT Id FROM Account WHERE BillingState = :billingState LIMIT 200];
+        
+        // Create a list to hold Contact records to be inserted
+        List<Contact> contacts = new List<Contact>();
+        
+        // Loop through each Account and clone the Contact for each
+        for (Account account : accounts) {
+            Contact clonedContact = contact.clone(false, true, true, true);
+            clonedContact.AccountId = account.Id;
+            contacts.add(clonedContact);
+        }
+        
+        // Insert the new Contact records
+        if (!contacts.isEmpty()) {
+            insert contacts;
+        }
+    }
+}
+
+
+
+-Test_Class-
+@isTest
+private class AddPrimaryContactTest {
+    @testSetup
+    static void testData() {
+        List<Account> accounts = new List<Account>();
+        
+        // Adding 100 accounts for NY and 100 accounts for CA
+        for (Integer i = 0; i < 100; i++) {
+            accounts.add(new Account(Name = 'Test Account NY ' + i, BillingState = 'NY'));
+            accounts.add(new Account(Name = 'Test Account CA ' + i, BillingState = 'CA'));
+        }
+        
+        insert accounts;
+    }
+    
+    @isTest
+    public static void testAddingContacts() {
+        // Creating a contact template to be cloned
+        Contact contact = new Contact(FirstName = 'James', LastName = 'Ford');
+
+        // Enqueue the job to add contacts for CA accounts
+        Test.startTest();
+        System.enqueueJob(new AddPrimaryContact(contact, 'CA'));
+        Test.stopTest();
+        
+        // Verify that 100 Contacts were created for CA Accounts
+        List<Contact> contacts = [SELECT Id FROM Contact WHERE Account.BillingState = 'CA'];
+        System.assertEquals(100, contacts.size(), 'Something went wrong! Incorrect number of contacts!');
+    }
+}
