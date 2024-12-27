@@ -1,0 +1,57 @@
+
+--1--
+Create a trigger on the Contact object that calculates and updates the Total_Contacts__c field on the related Account whenever Contacts are added, updated or deleted. Handle bulk updates efficiently.
+
+trigger ContactTrigger on Contact (after insert, after update, after delete, after undelete) {
+    // Set to store Account Ids
+    Set<Id> accountIds = new Set<Id>();
+    
+    // Collect Account Ids from new and old Contact records
+    if (Trigger.isInsert || Trigger.isUpdate || Trigger.isUndelete) {
+        for (Contact con : Trigger.new) {
+            accountIds.add(con.AccountId);
+        }
+    }
+    
+    //During an update operation, a Contact's AccountId can change. For example, a Contact might be reassigned from one Account to another. For that reason we are collecting ID again for 'isUpdate'
+    if (Trigger.isUpdate || Trigger.isDelete) {
+        for (Contact con : Trigger.old) {
+            accountIds.add(con.AccountId);
+        }
+    }
+
+    // Remove null values (in case AccountId is not set)
+    accountIds.remove(null);
+
+    // Map to store Account Ids and their contact counts
+    Map<Id, Integer> accountContactCountMap = new Map<Id, Integer>();
+
+    // Query the total number of Contacts for each Account
+    if (!accountIds.isEmpty()) {
+        List<AggregateResult> contactCounts = [
+            SELECT AccountId, COUNT(Id) contactCount
+            FROM Contact
+            WHERE AccountId IN :accountIds
+            GROUP BY AccountId
+        ];
+        
+        // Store the contact counts in the map
+        for (AggregateResult ar : contactCounts) {
+            accountContactCountMap.put((Id)ar.get('AccountId'), (Integer)ar.get('contactCount'));
+        }
+    }
+
+    // List to store Accounts to be updated
+    List<Account> accountsToUpdate = new List<Account>();
+
+    // Add Accounts with their updated contact counts
+    for (Id accountId : accountIds) {
+        Integer contactCount = accountContactCountMap.containsKey(accountId) ? accountContactCountMap.get(accountId) : 0;
+        accountsToUpdate.add(new Account(Id = accountId, Number_Of_Contacts__c = contactCount));
+    }
+
+    // Update the Account records
+    if (!accountsToUpdate.isEmpty()) {
+        update accountsToUpdate;
+    }
+}
