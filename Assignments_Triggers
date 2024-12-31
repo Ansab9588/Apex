@@ -55,3 +55,36 @@ trigger ContactTrigger on Contact (after insert, after update, after delete, aft
         update accountsToUpdate;
     }
 }
+
+
+
+
+
+
+--2--
+Write a trigger on the Opportunity object that validates if the StageName is set to "Closed Won", the related Account must have a value for BillingAddress. Prevent the operation if the condition is not met.
+
+trigger Trigger2 on Opportunity (before insert, before update) {
+	Set<Id> accIds = new Set<Id>();
+    
+    if(Trigger.isInsert || Trigger.isUpdate){
+        for(Opportunity opp : Trigger.New){
+        	accIds.add(opp.AccountId);
+    	}
+    }
+    
+   	Map<Id, Account> accMap = new Map<Id, Account>([SELECT Id, BillingStreet, BillingCity, BillingState, BillingPostalCode, BillingCountry FROM Account WHERE Id IN : accIds]);
+    
+    for(Opportunity op : Trigger.New){
+        if(op.StageName == 'Closed Won'){
+            Account acc = accMap.get(op.AccountId);
+            
+            if(acc.BillingStreet == null || acc.BillingCity == null || acc.BillingState == null || acc.BillingPostalCode == null || acc.BillingCountry == null) { 
+                    op.addError('Cannot mark Opportunity as Closed Won without a complete Billing Address on the related Account.');
+            }
+            
+        }	
+    }
+    
+    
+}
