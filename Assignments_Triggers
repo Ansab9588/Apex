@@ -238,3 +238,32 @@ public static void Trigger37BeforeInsert(List<Contact> ctslst){
         }
     }
 
+
+
+
+
+--8--
+// Prevent deletion of an account if there is any Opportunity related to that account.
+
+    public static void Trigger30BeforeDelete(List<Account> acclst){
+        Set<Id> accIds = new Set<Id>();
+        
+        for(Account acc : acclst){
+            accIds.add(acc.Id);
+        }
+        
+        List<Opportunity> opplst = [SELECT Id, AccountId FROM Opportunity WHERE AccountId IN :accIds];
+        
+        Set<Id> accWithOpps = new Set<Id>();
+    	for (Opportunity opp : opplst) {
+        	accWithOpps.add(opp.AccountId);
+    	}
+        
+        
+        for(Account acc : acclst){
+            if(accWithOpps.contains(acc.Id)){
+                acc.addError('This Account can\'t be deleted as it has some related opportunities');
+            }
+        }
+    }
+
