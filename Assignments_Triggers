@@ -144,3 +144,97 @@ trigger OpportunityTrigger on Opportunity (before insert, after insert, before u
         }
     }
 }
+
+
+
+
+
+--5--
+// Write a trigger on contact to prevent duplicate records based on Contact Email.
+
+public static void Trigger37BeforeInsert(List<Contact> ctslst){
+        List<String> FirstNameLst = new List<String>();
+        List<String> LastNameLst = new List<String>();
+        List<String> MobilePhoneLst = new List<String>();
+        
+        for(Contact con : ctslst){
+            FirstNameLst.add(con.FirstName);
+            LastNameLst.add(con.LastName);
+            MobilePhoneLst.add(con.MobilePhone);
+        }
+        
+        List<Contact> RedundantContacts = [SELECT Id, FirstName, LastName, MobilePhone FROM Contact WHERE FirstName IN :FirstNameLst AND LastName IN :LastNameLst AND MobilePhone IN :MobilePhoneLst];
+        
+        Map<String, Id> RedundantCTSKeys = new Map<String, Id>();
+        for(Contact con : RedundantContacts){
+            RedundantCTSKeys.put((con.FirstName+con.LastName+con.MobilePhone), con.Id);
+        }
+        
+        for(Contact con : ctslst){
+            if(RedundantCTSKeys.ContainsKey(con.FirstName+con.LastName+con.MobilePhone)){
+                con.addError('The contact with same Name and Mobile Number already exists. DUPLICATE !!!');
+            }
+        }
+    }
+
+
+
+
+
+
+--6--
+// When a Opportunity Stage (field) is changed, create a Task record on Opportunity and assign it to Logged In User/Opportunity Owner Any User.
+
+    public static void Trigger22AfterUpdate(List<Opportunity> opplst, Map<Id, Opportunity> oppMap){
+        // Task list to store new tasks
+        List<Task> tsklst = new List<Task>();
+        
+        // Iterating through each Opportunity
+        for(Opportunity opp : opplst){
+            Opportunity op = oppMap.get(opp.Id);
+            
+            // Checking the Stage must have been changed
+            if(opp.StageName != op.StageName){
+                
+                Task tsk = new Task
+                    (
+                WhatId = opp.Id,
+                Subject = 'Follow Up on Opportunity Stage Change',
+                Status = 'Not Started',
+                Priority = 'Normal',
+                OwnerId = opp.OwnerId
+                    );
+                
+                // Adding Tasks in to te task List
+                tsklst.add(tsk);
+            }
+        }
+        
+        // Inserting new task lists
+        if(! tsklst.isEmpty()){
+            insert tsklst;
+        }
+    }
+
+
+
+
+
+--7--
+// If an opportunity is closed then, no one should be able to delete it except the user having a System Administrator profile.
+
+    public static void Trigger29BeforeDelete(List<Opportunity> opplst){
+        
+        // Fetching profile information of current user
+        String currentUserProfile = [SELECT Profile.Name FROM User WHERE Id =: UserInfo.getUserId()].Profile.Name;
+        
+        // Iterating through each Opportunity
+        for(Opportunity opp : opplst){
+            
+            // Checking Opportunity stage must be closed and user must not be Admin
+            if((opp.StageName == 'Closed Won' || opp.StageName == 'Closed Lost') && (currentUserProfile != 'System Administrator')){
+                opp.addError('Only Administrator can delete this record');
+            }
+        }
+    }
+
