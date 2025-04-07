@@ -88,3 +88,59 @@ trigger Trigger2 on Opportunity (before insert, before update) {
     
     
 }
+
+
+
+
+
+--3--
+Trigger to find all related opportunities amounts of an account
+
+trigger OpportunityTrigger on Opportunity (before insert, after insert, before update, after update, before delete, after delete, after undelete) {
+    Set<Id> accIds = new Set<Id>();
+    if(Trigger.isBefore){
+        
+    }
+    if(Trigger.isAfter){
+        if(Trigger.isInsert || Trigger.isUndelete){
+            for(Opportunity opp : Trigger.New){
+                accIds.add(opp.AccountId);
+            }
+        }
+        if(Trigger.isUpdate){
+            for(Opportunity opp : Trigger.New){
+                if(opp.AccountId != Trigger.oldMap.get(opp.Id).AccountId){
+                    accIds.add(opp.AccountId);
+                   	accIds.add(Trigger.oldMap.get(opp.Id).AccountId);
+                }
+                else{
+                    accIds.add(opp.AccountId);
+                }
+            }
+        }
+        if(Trigger.isDelete){
+            for(Opportunity opp : Trigger.Old){
+                accIds.add(Trigger.OldMap.get(opp.Id).AccountId);
+            }
+        }
+    }
+    
+    if(! accIds.isEmpty()){
+        List<AggregateResult> aggrList = [SELECT AccountId ids, SUM(Amount) totalAmount FROM Opportunity WHERE AccountId IN :accIds GROUP BY AccountId];
+        Map<Id, Account> accMap = new Map<Id, Account>();
+        if(! aggrList.isEmpty()){
+            for(AggregateResult aggr : aggrList){
+                Account acc = new Account(
+                Id = (Id)aggr.get('ids'),
+                Total_Opportunity_Amount__c = (Decimal)aggr.get('totalAmount')
+                );
+                accMap.put(acc.Id, acc);
+            }
+        }
+        
+        if(! accMap.isEmpty()){
+            update accMap.values();
+                
+        }
+    }
+}
