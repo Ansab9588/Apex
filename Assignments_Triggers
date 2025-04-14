@@ -290,3 +290,16 @@ public static void AccOppUpdate(Map<Id,Account> accMap){
 
 
 
+
+--10--
+Prevent deletion of an account if its Active field is 'Yes'.
+
+public static void PreventDelete(List<Account> acclst){
+        for(Account acc : acclst){
+            if(acc.Active__c == 'Yes'){
+                acc.addError('This account can\'t be deleted since it is still active');
+            }
+        }
+    }
+
+
