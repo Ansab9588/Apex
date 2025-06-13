@@ -1,0 +1,751 @@
+
+// Account Triggers
+
+// Trigger 3
+    // Whenever New Account Record is created then needs to create associated Contact Record automatically.
+    public static void Trigger3AfterInsert(List<Account> acclst){
+        List<Contact> ctslst = new List<Contact>();
+        
+        for(Account acc : acclst){
+            Contact con = new Contact();
+            
+            con.Accountid = acc.Id;
+            con.LastName = acc.Name;
+            con.Phone = acc.Phone;
+            
+            ctslst.add(con);
+        }
+        
+        insert ctslst;
+    }
+    
+    
+    
+    
+    // Trigger 4
+    // When ever the Account is created with Industry as Banking then create a contact for account, Contact Lastname as Account name and contact phone as account phone.
+    public static void Trigger4AfterInsert(List<Account> acclst){
+        List<Contact> ctslst = new List<Contact>();
+        
+        for(Account acc : acclst){
+            
+            if(acc.Industry == 'Banking'){
+                Contact con = new Contact();
+            
+            	con.Accountid = acc.Id;
+            	con.LastName = acc.Name;
+            	con.Phone = acc.Phone;
+            
+            	ctslst.add(con);
+            }
+        }
+        
+        if(! ctslst.isEmpty()){
+        	insert ctslst;
+        }
+    }
+    
+    
+    
+    
+    // Trigger 5
+    // Creates the number of contacts which are equal to the number which we will enter in the Number of Locations field on the Account Object.
+    public static void Trigger5AfterInsert(List<Account> acclst){
+        List<Contact> ctslst = new List<Contact>();
+        Map<Id, Decimal> accLocMap = new Map<Id, Decimal>();
+        
+        for(Account acc : acclst){
+            accLocMap.put(acc.Id, acc.NumberofLocations__c);
+        }
+        
+        for(Id accId : accLocMap.keyset()){
+               for(integer i=0; i<accLocMap.get(accId); i++){
+                 contact con = new contact();
+                 con.AccountId = accId;
+                 con.LastName = 'Test Contact'+(i+1);
+                 ctslst.add(con);
+			   }
+		}
+        
+        if(! ctslst.isEmpty()){
+        	insert ctslst;
+        }
+    }
+    
+    
+    
+    
+    
+    
+    // Trigger 6
+    // Upon Account Creation if Industry is not null and having value as ‘Media’ then populate Rating as Hot
+    public static void Trigger6BeforeInsert(List<Account> acclst, Map<Id, Account> OldMapAcclst){
+        for(Account acc : acclst){
+            // ***
+            if((acc.Industry != NULL && acc.Industry == 'Media') && (Trigger.isInsert || OldMapAcclst.get(acc.Id).Rating != acc.Rating)) {
+                acc.Rating = 'Hot';
+            }
+            else {
+                acc.Rating = 'Cold';
+            }
+        }
+    }
+    
+    
+    
+    
+    
+    // Trigger 8
+    // When an account inserts and CopyBillingToShipping (Custom Field) checkbox is checked then automatically copy account billing address into account shipping address.
+    public static void Trigger8BeforeInsert(List<Account> acclst){
+        for(Account acc : acclst){
+            if(acc.CopyBillingToShipping__c == True){
+                acc.ShippingStreet = acc.BillingStreet;
+                acc.ShippingCity = acc.BillingCity;
+                acc.ShippingCountry = acc.BillingCountry;
+                acc.ShippingState = acc.BillingState;
+                acc.ShippingPostalCode = acc.BillingPostalCode;
+            }
+        }
+    }
+    
+    
+    
+    
+    
+    // Trigger 10
+    // Create a related Contact when an Account is created.
+    public static void Trigger10AfterInsert(List<Account> acclst){
+        
+        List<Contact> ctslst = new List<Contact>();
+        
+        for(Account acc : acclst){
+            Contact con = new Contact(LastName=acc.Name, AccountId=acc.Id);
+            ctslst.add(con);
+        }
+        
+        if(! ctslst.isEmpty()){
+            insert ctslst;
+        }
+    }
+    
+    
+    
+    
+    
+    
+    // Trigger 11
+    // Create a related Opportunity when an Account is created.
+    public static void AccountTrigger11AfterInsert(List<Account> acclst){
+        List<Opportunity> opplst = new List<Opportunity>();
+        for(Account acc : acclst){
+            Opportunity opp = new Opportunity(Name=acc.Name+' Opportunity', CloseDate=Date.Today().addDays(45), StageName='Prospecting', AccountId=acc.Id);
+            opplst.add(opp);
+        }
+        
+        if(! opplst.isEmpty()){
+            insert opplst;
+        }
+    }
+    
+    
+    
+    
+    // Assignment
+    public static void Trigger4BeforeInsert(List<Account> acclst){
+        
+        
+		Set<String> uniqueName = new Set<String>();
+        Set<String> uniquePhone = new Set<String>();
+        Set<String> uniqueAccNum = new Set<String>();
+		Map<String, Account> duplicateAccountMap = new Map<String, Account>();   
+        
+        for(Account acc : acclst){
+            uniqueName.add(acc.Name);
+            uniquePhone.add(acc.Phone);
+			uniqueAccNum.add(acc.AccountNumber);
+        }
+                                  
+		List<Account> existingAccounts = [SELECT Name, Phone, AccountNumber FROM Account WHERE Name IN :uniqueName AND Phone IN :uniquePhone AND AccountNumber IN :uniqueAccNum];
+		
+        uniqueName.clear();
+        uniquePhone.clear();
+        uniqueAccNum.clear();
+        
+        if(! existingAccounts.isEmpty()){
+            for(Account acc : existingAccounts){
+                duplicateAccountMap.put((acc.Name+acc.Phone+acc.AccountNumber), acc);
+            }
+            
+            for(Account acc : acclst){
+                if(duplicateAccountMap.containsKey(acc.Name+acc.Phone+acc.AccountNumber)){
+                    acc.addError('Account with same Name, Phone and Account Number already exist !!!');
+                }
+            }
+        }
+
+		/*        
+        for(Account acc :acclst){
+            List<Account> accls = [SELECT Name, Phone, AccountNumber FROM Account WHERE Name=:acc.Name AND Phone=:acc.Phone AND AccountNumber=:acc.AccountNumber LIMIT 1];
+            if(!accls.isEmpty()){
+                acc.addError('You cant save it');
+            }
+        }
+		*/
+    }
+    
+    
+    
+    
+    // Trigger 19
+    public static void Trigger19BeforeUpdate(List<Account> acclst){
+        
+        /*
+        for(Account acc : acclst){
+            if(acc.Phone == NULL){
+                acc.Phone = '1234567890';
+            }
+        }
+		*/
+		
+    }
+    
+    
+    
+    
+    
+    // Trigger 20
+    // If the Account phone is updated then populate the phone number on all related Contacts (Home Phone field). 
+    public static void Trigger20AfterUpdate(List<Account> acclst, Map<Id, Account> oldMapAcc){
+        Map<Id,Account> AccID = new Map<Id,Account>();
+        for(Account acc : acclst){
+            Account oldAcc=oldMapAcc.get(acc.id);
+
+            if(acc.phone != oldAcc.phone){
+                AccId.put(acc.id,acc);
+            }
+        }
+
+
+        List<Contact> ctslst = [SELECT Id,AccountId, phone FROM Contact where AccountId IN : AccId.KeySet()];
+
+            for(Contact c : ctslst){
+                Account acc=AccId.get(c.accountId);
+                c.phone = acc.phone;
+            }
+
+        if(ctslst.size()>0 && ctslst != null){
+            update ctslst;
+        }
+        
+		
+    }
+    
+    
+    
+    
+    // Trigger 21
+    // If the Account billing address is updated then update related contacts mailing address Using Map
+    public static void Trigger21AfterUpdate(List<Account> acclst, Map<Id, Account> oldMapAcc){
+        Map<Id,Account> AccID = new Map<Id,Account>();
+        for(Account acc : acclst){
+            Account oldAcc=oldMapAcc.get(acc.id);
+
+            if(acc.BillingStreet != oldAcc.BillingStreet || 
+            	acc.BillingCity != oldAcc.BillingCity ||
+            	acc.BillingState != oldAcc.BillingState ||
+            	acc.BillingPostalCode != oldAcc.BillingPostalCode ||
+            	acc.BillingCountry != oldAcc.BillingCountry){
+                AccId.put(acc.id,acc);
+            }
+        }
+
+
+        List<Contact> ctslst = [SELECT Id,AccountId, phone FROM Contact where AccountId IN : AccId.KeySet()];
+
+            for(Contact c : ctslst){
+                Account acc=AccId.get(c.accountId);
+                c.MailingStreet = acc.BillingStreet;
+                c.MailingCity = acc.BillingCity;
+                c.MailingPostalCode = acc.BillingPostalCode;
+                c.MailingCountry = acc.BillingCountry;
+                c.MailingState = acc.BillingState;
+            }
+
+        if(ctslst.size()>0 && ctslst != null){
+            update ctslst;
+        }
+		
+    }
+    
+    
+    
+    
+    
+    // Trigger 23
+    // Write a trigger on Account when Account Active field is updated from ‘Yes’ to ‘No’ then check all opportunities associated with the account. Update all Opportunities Stage to close lost if stage not equal to close won
+    
+    
+    
+    
+    
+    
+    // Trigger 24
+    // Account records cannot be deleted if active is Yes.
+    public static void Trigger24BeforeDelete(List<Account> acclst){
+        for(Account acc : acclst){
+            if(acc.Active__c == 'Yes'){
+                acc.addError('This record can\'t be Delete since it is Active');
+            }
+        }
+    }
+    
+    
+    
+    
+    // Trigger 25
+    // Prevent account record from being edited if the record is created 7 daysback.
+    public static void Trigger25BeforeUpdate(List<Account> acclst){
+        // iterating through the list of Accounts
+        for(Account acc : acclst){
+            // Checking whether the created date is within a week or not
+            if(Date.Today() > acc.CreatedDate.addDays(6)){
+                // Error that the records can't be edited
+                acc.addError('This record can\'t be edited since it is being created 7 days ago');
+            }
+        }        
+    }
+    
+    
+    
+    
+    
+    
+    // Trigger 28
+    // Write a trigger on Account and check only System Administrator profile users should be able to delete an account	
+    public static void Trigger28BeforeDelete(List<Account> acclst){
+        // Get current user's profile
+    	String currentUserProfile = [SELECT Profile.Name FROM User WHERE Id =: UserInfo.getUserId()].Profile.Name;
+		// UserInfo is a system class that provides information about the current user.
+		// getUserId() is a method of this class that returns the ID of the user currently logged into the system.
+    	
+        // Check if the user is not a System Administrator
+    	if(currentUserProfile != 'System Administrator') {
+        	for (Account acc : acclst) {
+            	acc.addError('You do not have permission to delete an account.');
+        	}
+    	}
+    }
+    
+    
+    
+    
+    
+    // Trigger 30
+    // Prevent deletion of an account if there is any Opportunity related to that account.
+    public static void Trigger30BeforeDelete(List<Account> acclst){
+        Set<Id> accIds = new Set<Id>();
+        
+        for(Account acc : acclst){
+            accIds.add(acc.Id);
+        }
+        
+        List<Opportunity> opplst = [SELECT Id, AccountId FROM Opportunity WHERE AccountId IN :accIds];
+        
+        Set<Id> accWithOpps = new Set<Id>();
+    	for (Opportunity opp : opplst) {
+        	accWithOpps.add(opp.AccountId);
+    	}
+        
+        
+        for(Account acc : acclst){
+            if(accWithOpps.contains(acc.Id)){
+                acc.addError('This Account can\'t be deleted as it has some related opportunities');
+            }
+        }
+    }
+    
+    
+    
+    
+    
+    // Trigger 31
+    // Prevent deletion of an account if there is any case related to that account.
+    public static void Trigger31BeforeDelete(List<Account> acclst){
+        Set<Id> accIds = new Set<Id>();
+        
+        for(Account acc : acclst){
+            accIds.add(acc.Id);
+        }
+        
+        List<Case> caselst = [SELECT Id, AccountId FROM Case WHERE AccountId IN :accIds];
+        
+        Set<Id> CaseAccIds = new Set<Id>();
+        
+        for(Case cs : caselst){
+            caseAccIds.add(cs.AccountId);
+        }
+        
+        for(Account acc : acclst){
+            if(caseAccIds.contains(acc.Id)){
+                acc.addError('This Account can\'t be deleted as it has some related Cases');
+            }
+        }
+    }
+    
+    
+    
+    
+    
+    // Trigger 38
+    // Set OWD as Private for Account. Once an Account record is created, it should be automatically shared with any one user who belongs to Standard User profile.
+    public static void Trigger38AfterInsert(List<Account> acclst){
+        // Get the Profile ID for Standard User
+        Id standardUserProfileId = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1].Id;
+        
+        // Get a User ID of a user with the Standard User profile
+        Id standardUserId = [SELECT Id FROM User WHERE ProfileId = :standardUserProfileId AND IsActive = true LIMIT 1].Id;
+
+        List<AccountShare> accountSharesToAdd = new List<AccountShare>();
+
+        for (Account acc : acclst) {
+            // Create an AccountShare record to share the Account with the Standard User
+            AccountShare accShare = new AccountShare();
+            accShare.AccountId = acc.Id;
+            accShare.UserOrGroupId = standardUserId;
+            accShare.AccountAccessLevel = 'ReadWrite'; // Adjust access level as needed
+            accShare.RowCause = Schema.AccountShare.RowCause.Manual;
+
+            accountSharesToAdd.add(accShare);
+        }
+
+        if (!accountSharesToAdd.isEmpty()) {
+            insert accountSharesToAdd;
+        }
+    }
+
+
+
+
+
+
+
+// Contact Triggers
+
+// Trigger 35
+    // Upon contact creation an email should be sent to email populated on Contact with specified template
+    public static void Trigger35AfterInsert(List<Contact> ctslst){
+        List<String> conEmailIds = new List<String>();
+        for(Contact con : ctslst){
+            conEmailIds.add(con.Email);
+        }
+        List<Messaging.SingleEmailMessage> emails = new List<Messaging.SingleEmailMessage>();
+
+    for (Contact con : ctslst) {
+        if (con.Email != null) {
+            Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
+            // set properties on singular email
+            email.toAddresses = conEmailIds;
+            email.setReplyTo('customemail@example.pl'); 
+            email.optOutPolicy = 'FILTER';
+            email.subject = 'Contact Created !';
+            email.PlainTextBody = 'A Contact with last name '+con.LastName+' has been created';
+            emails.add(email);        
+            
+        }
+        
+    }
+        
+        Messaging.SendEmailResult [] results = Messaging.SendEmail(emails);
+
+        
+    }
+
+	
+    
+    
+    
+    // Trigger 37
+    // Write a trigger on contact to prevent duplicate records based on Contact Email.
+    public static void Trigger37BeforeInsert(List<Contact> ctslst){
+        List<String> FirstNameLst = new List<String>();
+        List<String> LastNameLst = new List<String>();
+        List<String> MobilePhoneLst = new List<String>();
+        
+        for(Contact con : ctslst){
+            FirstNameLst.add(con.FirstName);
+            LastNameLst.add(con.LastName);
+            MobilePhoneLst.add(con.MobilePhone);
+        }
+        
+        List<Contact> RedundantContacts = [SELECT Id, FirstName, LastName, MobilePhone FROM Contact WHERE FirstName IN :FirstNameLst AND LastName IN :LastNameLst AND MobilePhone IN :MobilePhoneLst];
+        
+        Map<String, Id> RedundantCTSKeys = new Map<String, Id>();
+        for(Contact con : RedundantContacts){
+            RedundantCTSKeys.put((con.FirstName+con.LastName+con.MobilePhone), con.Id);
+        }
+        
+        for(Contact con : ctslst){
+            if(RedundantCTSKeys.ContainsKey(con.FirstName+con.LastName+con.MobilePhone)){
+                con.addError('The contact with same Name and Mobile Number already exists. DUPLICATE !!!');
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+// Opportunity Triggers
+
+// Trigger 7
+    // Upon Opportunity Creation if Amount is not null and is greater than 100000 then populate ‘Hot Opportunity’ in description field.
+    public static void Trigger7BeforeInsert(List<Opportunity> opplst){
+        for(Opportunity opp : opplst){
+            if(opp.Amount > 100000){
+                opp.Description = 'Hot Opportunity';
+            }
+        }
+    }
+    
+    
+    // Trigger 18
+    // If opportunity Stage is updated upon its creation or update then update description as either 'Opp is Closed Lost' or 'Opp is Closed Won' or 'Opp IS Open'
+    public static void Trigger18BeforeUpdate(List<Opportunity> opplst){
+        
+    	for (Opportunity opp : opplst) {
+        	if (opp.StageName == 'Closed Lost') {
+            	opp.Description = 'Opp is Closed Lost';
+        	} else if (opp.StageName == 'Closed Won') {
+            	opp.Description = 'Opp is Closed Won';
+        	} else {
+            	opp.Description = 'Opp IS Open';
+        	}
+            
+    	}   
+        
+    }
+    
+    
+    
+    
+    
+    // Trigger 22
+    // When a Opportunity Stage (field) is changed, create a Task record on Opportunity and assign it to Logged In User/Opportunity Owner Any User.
+    public static void Trigger22AfterUpdate(List<Opportunity> opplst, Map<Id, Opportunity> oppMap){
+        // Task list to store new tasks
+        List<Task> tsklst = new List<Task>();
+        
+        // Iterating through each Opportunity
+        for(Opportunity opp : opplst){
+            Opportunity op = oppMap.get(opp.Id);
+            
+            // Checking the Stage must have been changed
+            if(opp.StageName != op.StageName){
+                
+                Task tsk = new Task
+                    (
+                WhatId = opp.Id,
+                Subject = 'Follow Up on Opportunity Stage Change',
+                Status = 'Not Started',
+                Priority = 'Normal',
+                OwnerId = opp.OwnerId
+                    );
+                
+                // Adding Tasks in to te task List
+                tsklst.add(tsk);
+            }
+        }
+        
+        // Inserting new task lists
+        if(! tsklst.isEmpty()){
+            insert tsklst;
+        }
+    }
+    
+    
+    
+    
+    
+    // Trigger 26
+    // Apply validation using addError( ) method in trigger. While Creation of Opportunity is Amount is null then throw an error message.
+    /*
+    public static void Trigger26BeforeInsert(List<Opportunity> opplst){
+        for(Opportunity opp  : opplst){
+            if(opp.Amount == NULL){
+                opp.addError('Amount field can\'t be kept void');
+            }
+        }
+    }
+	*/
+    
+    
+    
+    
+    
+    // Trigger 27
+    // When an opportunity is updated to Closed Lost and Closed Lost Reason (field) is not populated then throw validation error that ‘Please populate Closed Lost Reason’ on opportunity. 
+    public static void Trigger27BeforeUpdate(List<Opportunity> opplst){
+        for(Opportunity opp : opplst){
+            if(opp.StageName == 'Closed Lost' && opp.Closed_Lost_Reason__c == NULL){
+                opp.addError('Please populate Closed Lost Reason');
+            }
+        }
+    }
+	
+    
+    
+    
+    
+    // Trigger 29
+    // If an opportunity is closed then, no one should be able to delete it except the user having a System Administrator profile.
+    public static void Trigger29BeforeDelete(List<Opportunity> opplst){
+        
+        // Fetching profile information of current user
+        String currentUserProfile = [SELECT Profile.Name FROM User WHERE Id =: UserInfo.getUserId()].Profile.Name;
+        
+        // Iterating through each Opportunity
+        for(Opportunity opp : opplst){
+            
+            // Checking Opportunity stage must be closed and user must not be Admin
+            if((opp.StageName == 'Closed Won' || opp.StageName == 'Closed Lost') && (currentUserProfile != 'System Administrator')){
+                opp.addError('Only Administrator can delete this record');
+            }
+        }
+    }
+
+
+
+
+
+
+// Case Triggers
+
+// Trigger 1
+    // When ever a case is created with origin as email then set status as new and Priority as Medium.
+    public static void Trigger1Insert(List<Case> caselst){
+        
+        for(Case cs : caselst){
+            if(cs.Origin == 'Email'){
+                cs.Status = 'New';
+           		cs.Priority = 'Medium';
+            }
+        }
+        
+    }
+    
+    
+    
+    
+    // Trigger 11
+    // When a Case is created on any Account, put the latest case number on the Account in the ‘Latest Case Number’ field.
+    public static void Trigger11AfterInsert(List<Case> caselst){
+        Map<Id, Integer> CaseNumbersMap = new Map<Id, Integer>();
+        Set<Id> AccIds = new Set<Id>();
+        
+        for(Case cs : caselst){
+            if(cs.AccountId != NULL){
+                accIds.add(cs.AccountId);
+            }
+        }
+        
+        
+        if (!accIds.isEmpty()) {
+        List<Case> latestCases = [SELECT AccountId, CaseNumber 
+                                  FROM Case 
+                                  WHERE AccountId IN :accIds 
+                                  ORDER BY CreatedDate DESC 
+                                  LIMIT 1];
+
+        Map<Id, String> latestCaseNumberMap = new Map<Id, String>();
+        for (Case c : latestCases) {
+            latestCaseNumberMap.put(c.AccountId, c.CaseNumber);
+        }
+
+        List<Account> accountsToUpdate = new List<Account>();
+        for (Id accId : accIds) {
+            if (latestCaseNumberMap.containsKey(accId)) {
+                accountsToUpdate.add(new Account(Id = accId, Latest_Case_Number__c = latestCaseNumberMap.get(accId)));
+            }
+        }
+		
+        if (!accountsToUpdate.isEmpty()) {
+            update accountsToUpdate;
+        	}
+    	}
+        
+        
+        /*
+        List<AggregateResult> CaseCounts = [SELECT AccountId, COUNT(Id) CaseCount FROM Case WHERE AccountId IN : accIds GROUP BY AccountId];
+        
+        for(AggregateResult cs : CaseCounts){
+            CaseNumbersMap.put((Id)cs.get('AccountId'), (Integer)cs.get('CaseCount'));
+        }
+        
+        List<Account> accToUpdate = new List<Account>();
+        
+        for(Id accId : accIds){
+            Integer count = CaseNumbersMap.containsKey(accId) ? CaseNumbersMap.get(accId) : 0;
+            accToUpdate.add(new Account(Id=accId, =count));
+        }
+		*/
+    }
+
+
+
+
+
+
+// Lead Triggers
+
+// Trigger 2
+    // When ever Lead is created with LeadSource as Web then give rating as cold otherwise hot.
+
+    public static void Trigger2Insert(List<Lead> Leadlst){
+        for(Lead ld : Leadlst){
+            if(ld.LeadSource == 'Web'){
+                ld.Rating = 'Cold';
+            }
+            else{
+                ld.Rating = 'Hot';
+            }
+        }
+    }
+
+
+
+
+
+
+
+// User Triggers 
+
+// Trigger 36
+    // Whenever a new User having profile “System Administrator” is inserted and is Active, add the user to the public group “Admins”. Create a public group named Admins.
+    public static void Trigger36AfterInsert(List<User> userlst){
+        // Get the Profile ID for System Administrator
+        Id sysAdminProfileId = [SELECT Id FROM Profile WHERE Name = 'System Administrator' LIMIT 1].Id;
+
+        // Get the Public Group ID for Admins
+        Id adminGroupId = [SELECT Id FROM Group WHERE Name = 'Admins' AND Type = 'Regular' LIMIT 1].Id;
+        
+        List<GroupMember> membersToAdd = new List<GroupMember>();
+        
+        for(User usr : userlst){
+            if(usr.IsActive==True && usr.ProfileId == sysAdminProfileId){
+                GroupMember mem = new GroupMember(
+                    GroupId = adminGroupId,
+                    UserOrGroupId = usr.Id
+                );
+                membersToAdd.add(mem);
+            }
+        }
+        
+        if(! membersToAdd.isEmpty()){
+            insert membersToAdd;
+        }
+    }
